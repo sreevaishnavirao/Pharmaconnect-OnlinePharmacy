@@ -9,9 +9,7 @@ import java.util.Optional;
 public interface StockSubscriptionRepository extends JpaRepository<StockSubscription, Long> {
 
     Optional<StockSubscription> findByProductIdAndEmail(Long productId, String email);
-
     List<StockSubscription> findByProductIdAndNotifiedFalse(Long productId);
-
     long countByProductIdAndNotifiedFalse(Long productId);
 }
 

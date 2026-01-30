@@ -18,13 +18,10 @@ import java.util.List;
 public class AddressServiceImpl implements AddressService{
     @Autowired
     private AddressRepository addressRepository;
-
     @Autowired
     private ModelMapper modelMapper;
-
     @Autowired
     UserRepository userRepository;
-
     @Override
     public AddressDTO createAddress(AddressDTO addressDTO, User user) {
         Address address = modelMapper.map(addressDTO, Address.class);
@@ -35,7 +32,6 @@ public class AddressServiceImpl implements AddressService{
         Address savedAddress = addressRepository.save(address);
         return modelMapper.map(savedAddress, AddressDTO.class);
     }
-
     @Override
     public List<AddressDTO> getAddresses() {
         List<Address> addresses = addressRepository.findAll();
@@ -43,7 +39,6 @@ public class AddressServiceImpl implements AddressService{
                 .map(address -> modelMapper.map(address, AddressDTO.class))
                 .toList();
     }
-
     @Override
     public AddressDTO getAddressesById(Long addressId) {
         Address address = addressRepository.findById(addressId)
@@ -58,7 +53,6 @@ public class AddressServiceImpl implements AddressService{
                 .map(address -> modelMapper.map(address, AddressDTO.class))
                 .toList();
     }
-
     @Override
     public AddressDTO updateAddress(Long addressId, AddressDTO addressDTO) {
         Address addressFromDatabase = addressRepository.findById(addressId)
@@ -70,7 +64,6 @@ public class AddressServiceImpl implements AddressService{
         addressFromDatabase.setCountry(addressDTO.getCountry());
         addressFromDatabase.setStreet(addressDTO.getStreet());
         addressFromDatabase.setBuildingName(addressDTO.getBuildingName());
-
         Address updatedAddress = addressRepository.save(addressFromDatabase);
 
         User user = addressFromDatabase.getUser();

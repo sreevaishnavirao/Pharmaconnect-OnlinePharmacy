@@ -16,19 +16,12 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
-
-    // ADMIN: Add product under category
     @PostMapping("/admin/categories/{categoryId}/product")
     public ResponseEntity<ProductDTO> addProduct(@PathVariable Long categoryId,
                                                  @RequestBody ProductDTO productDTO) {
         ProductDTO saved = productService.addProduct(categoryId, productDTO);
         return new ResponseEntity<>(saved, HttpStatus.OK);
     }
-
-    // ✅ REMOVED ADMIN UPDATE + DELETE FROM HERE to avoid ambiguous mapping
-    // (AdminProductController already owns /api/admin/products/**)
-
-    // PUBLIC: Get all products (paged)
     @GetMapping("/public/products")
     public ResponseEntity<ProductResponse> getAllProducts(
             @RequestParam(name = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
@@ -39,8 +32,11 @@ public class ProductController {
         ProductResponse response = productService.getAllProducts(pageNumber, pageSize, sortBy, sortOrder);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-
-    // PUBLIC: Get products by keyword (paged)
+    @GetMapping("/public/products/{productId}")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long productId) {
+        ProductDTO dto = productService.getProductById(productId);
+        return new ResponseEntity<>(dto, HttpStatus.OK);
+    }
     @GetMapping("/public/products/keyword/{keyword}")
     public ResponseEntity<ProductResponse> getProductsByKeyword(
             @PathVariable String keyword,
@@ -52,8 +48,6 @@ public class ProductController {
         ProductResponse response = productService.searchProductByKeyword(keyword, pageNumber, pageSize, sortBy, sortOrder);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-
-    // PUBLIC: Get products by category (paged)
     @GetMapping("/public/categories/{categoryId}/products")
     public ResponseEntity<ProductResponse> getProductsByCategory(
             @PathVariable Long categoryId,
@@ -65,8 +59,6 @@ public class ProductController {
         ProductResponse response = productService.searchByCategory(categoryId, pageNumber, pageSize, sortBy, sortOrder);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-
-    // ADMIN/GENERAL: Upload/Update product image (stores filename in DB)
     @PutMapping(value = "/products/{productId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductDTO> updateProductImage(@PathVariable Long productId,
                                                          @RequestParam("image") MultipartFile image) throws Exception {

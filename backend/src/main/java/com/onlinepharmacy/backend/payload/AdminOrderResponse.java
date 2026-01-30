@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AdminOrderResponse {
     private Long orderId;
-    private String email;        // customer
-    private String orderDate;    // string for easy frontend render
+    private String email;
+    private String orderDate;
     private String orderStatus;
     private Double totalAmount;
 }

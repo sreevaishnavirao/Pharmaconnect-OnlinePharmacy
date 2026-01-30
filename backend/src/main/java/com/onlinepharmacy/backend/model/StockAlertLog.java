@@ -14,13 +14,10 @@ public class StockAlertLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     @Column(name="product_id", nullable = false, unique = true)
     private Long productId;
-
     @Column(name="last_alert_at")
     private LocalDateTime lastAlertAt;
-
     @Column(name="last_quantity")
     private Integer lastQuantity;
 }

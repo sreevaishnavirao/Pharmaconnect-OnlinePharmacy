@@ -19,16 +19,12 @@ import java.util.Date;
 @Component
 public class JwtUtils {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
-
     @Value("${spring.app.jwtSecret}")
     private String jwtSecret;
-
     @Value("${spring.app.jwtExpirationMs}")
     private int jwtExpirationMs;
-
     @Value("${spring.ecom.app.jwtCookieName}")
     private String jwtCookie;
-
     public String getJwtFromCookies(HttpServletRequest request) {
         Cookie cookie = WebUtils.getCookie(request, jwtCookie);
         return cookie != null ? cookie.getValue() : null;
@@ -41,16 +37,10 @@ public class JwtUtils {
         }
         return null;
     }
-
     public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
         String jwt = generateTokenFromUsername(userPrincipal.getUsername());
         return ResponseCookie.from(jwtCookie, jwt)
-                .path("/api")
-                .maxAge(24 * 60 * 60)
-                // NOTE: For local development with a React app on another origin.
-                .httpOnly(false)
-                .secure(false)
-                .build();
+                .path("/api").maxAge(24 * 60 * 60).httpOnly(false).secure(false).build();
     }
 
     public ResponseCookie getCleanJwtCookie() {
@@ -61,26 +51,15 @@ public class JwtUtils {
     }
 
     public String generateTokenFromUsername(String username) {
-        return Jwts.builder()
-                .subject(username)
-                .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(key())
-                .compact();
+        return Jwts.builder().subject(username).issuedAt(new Date()).expiration(new Date((new Date()).getTime() + jwtExpirationMs)).signWith(key()).compact();
     }
 
     public String getUserNameFromJwtToken(String token) {
-        return Jwts.parser()
-                .verifyWith(key())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+        return Jwts.parser().verifyWith(key()).build().parseSignedClaims(token).getPayload().getSubject();
     }
 
     private SecretKey key() {
-        // The property value is a raw string (not Base64). Use bytes directly.
-        // Ensure it is long enough (>= 32 bytes for HS256). Your configured secret is long.
+
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 

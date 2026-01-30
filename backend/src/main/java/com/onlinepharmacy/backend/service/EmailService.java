@@ -1,23 +1,14 @@
 package com.onlinepharmacy.backend.service;
 
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Service;
+import java.util.List;
 
-@Service
-public class EmailService {
+public interface EmailService {
 
-    private final JavaMailSender mailSender;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
-    }
+    void sendEmail(List<String> to, String subject, String body);
 
-    public void send(String to, String subject, String body) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setTo(to);
-        msg.setSubject(subject);
-        msg.setText(body);
-        mailSender.send(msg);
+
+    default void send(String to, String subject, String body) {
+        sendEmail(List.of(to), subject, body);
     }
 }

@@ -10,42 +10,24 @@ import com.onlinepharmacy.backend.repositories.*;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
 
-    @Autowired
-    CartRepository cartRepository;
-
-    @Autowired
-    AddressRepository addressRepository;
-
-    @Autowired
-    OrderItemRepository orderItemRepository;
-
-    @Autowired
-    OrderRepository orderRepository;
-
-    @Autowired
-    PaymentRepository paymentRepository;
-
-    @Autowired
-    CartService cartService;
-
-    @Autowired
-    ModelMapper modelMapper;
-
-    @Autowired
-    ProductRepository productRepository;
+    @Autowired private CartRepository cartRepository;
+    @Autowired private AddressRepository addressRepository;
+    @Autowired private OrderItemRepository orderItemRepository;
+    @Autowired private OrderRepository orderRepository;
+    @Autowired private PaymentRepository paymentRepository;
+    @Autowired private CartService cartService;
+    @Autowired private ModelMapper modelMapper;
+    @Autowired private ProductRepository productRepository;
 
     @Override
     @Transactional
@@ -53,13 +35,13 @@ public class OrderServiceImpl implements OrderService {
                                String pgPaymentId, String pgStatus, String pgResponseMessage) {
 
         Cart cart = cartRepository.findCartByEmail(emailId);
-        if (cart == null) {
-            throw new ResourceNotFoundException("Cart", "email", emailId);
-        }
+        if (cart == null) throw new ResourceNotFoundException("Cart", "email", emailId);
+
+        List<CartItem> cartItems = cart.getCartItems();
+        if (cartItems == null || cartItems.isEmpty()) throw new APIException("Cart is empty");
 
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new ResourceNotFoundException("Address", "addressId", addressId));
-
         Order order = new Order();
         order.setEmail(emailId);
         order.setOrderDate(LocalDate.now());
@@ -71,64 +53,66 @@ public class OrderServiceImpl implements OrderService {
         payment.setOrder(order);
         payment = paymentRepository.save(payment);
         order.setPayment(payment);
-
         Order savedOrder = orderRepository.save(order);
-
-        List<CartItem> cartItems = cart.getCartItems();
-        if (cartItems.isEmpty()) {
-            throw new APIException("Cart is empty");
-        }
-
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItem cartItem : cartItems) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProduct(cartItem.getProduct());
-            orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setDiscount(cartItem.getDiscount());
-            orderItem.setOrderedProductPrice(cartItem.getProductPrice());
-            orderItem.setOrder(savedOrder);
-            orderItems.add(orderItem);
+            OrderItem oi = new OrderItem();
+            oi.setProduct(cartItem.getProduct());
+            oi.setQuantity(cartItem.getQuantity());
+            oi.setDiscount(cartItem.getDiscount());
+            oi.setOrderedProductPrice(cartItem.getProductPrice());
+            oi.setOrder(savedOrder);
+            orderItems.add(oi);
         }
-
         orderItems = orderItemRepository.saveAll(orderItems);
 
-        cart.getCartItems().forEach(item -> {
-            int quantity = item.getQuantity();
+
+        for (CartItem item : cartItems) {
+            int qty = item.getQuantity();
             Product product = item.getProduct();
 
-            // Reduce stock quantity
-            product.setQuantity(product.getQuantity() - quantity);
-
-            // Save product back to the database
+            int current = product.getQuantity() == null ? 0 : product.getQuantity();
+            product.setQuantity(current - qty);
             productRepository.save(product);
 
-            // Remove items from cart
-            cartService.deleteProductFromCart(cart.getCartId(), item.getProduct().getProductId());
-        });
-
-        OrderDTO orderDTO = modelMapper.map(savedOrder, OrderDTO.class);
-
-        // ✅ add items to DTO
-        if (orderDTO.getOrderItems() == null) {
-            orderDTO.setOrderItems(new ArrayList<>());
+            cartService.deleteProductFromCart(cart.getCartId(), product.getProductId());
         }
-        orderItems.forEach(item -> orderDTO.getOrderItems().add(modelMapper.map(item, OrderItemDTO.class)));
 
-        orderDTO.setAddressId(addressId);
-
-        return orderDTO;
+        return buildOrderDTO(savedOrder, orderItems);
     }
 
-    // ✅ ADMIN: get all orders (paginated)
+
     @Override
     @Transactional
     public OrderResponseDTO getAllOrders(Integer pageNumber, Integer pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("orderId").descending());
         Page<Order> page = orderRepository.findAll(pageable);
 
-        List<OrderDTO> content = page.getContent().stream()
-                .map(o -> modelMapper.map(o, OrderDTO.class))
-                .toList();
+        List<OrderDTO> content = attachItemsAndMap(page.getContent());
+        return new OrderResponseDTO(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isLast()
+        );
+    }
+
+
+    @Override
+    @Transactional
+    public OrderResponseDTO getOrdersByEmail(String email, Integer pageNumber, Integer pageSize) {
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("orderId").descending());
+        Page<Order> page = orderRepository.findByEmail(email, pageable);
+
+        List<OrderDTO> content = attachItemsAndMap(page.getContent());
+        System.out.println("DEBUG_ADMIN_ORDERS: firstOrderItemsCount = " +
+                (content.isEmpty() ? "no-orders" :
+                        (content.get(0).getOrderItems() == null ? "NULL" : content.get(0).getOrderItems().size())
+                )
+        );
+
 
         return new OrderResponseDTO(
                 content,
@@ -140,24 +124,56 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    // ✅ USER: get my orders by email (paginated)
-    @Override
-    @Transactional
-    public OrderResponseDTO getOrdersByEmail(String email, Integer pageNumber, Integer pageSize) {
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("orderId").descending());
-        Page<Order> page = orderRepository.findByEmail(email, pageable);
 
-        List<OrderDTO> content = page.getContent().stream()
-                .map(o -> modelMapper.map(o, OrderDTO.class))
+    private List<OrderDTO> attachItemsAndMap(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) return List.of();
+
+        List<Long> orderIds = orders.stream()
+                .map(Order::getOrderId)
+                .filter(Objects::nonNull)
                 .toList();
 
-        return new OrderResponseDTO(
-                content,
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages(),
-                page.isLast()
-        );
+
+        List<OrderItem> allItems = orderItemRepository.findAllByOrderIdsWithProduct(orderIds);
+
+        Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream()
+                .filter(oi -> oi.getOrder() != null && oi.getOrder().getOrderId() != null)
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getOrderId()));
+
+        List<OrderDTO> dtos = new ArrayList<>();
+
+        for (Order o : orders) {
+            OrderDTO dto = modelMapper.map(o, OrderDTO.class);
+
+            List<OrderItem> items = itemsByOrderId.getOrDefault(o.getOrderId(), List.of());
+
+
+            List<OrderItemDTO> itemDTOs = items.stream()
+                    .map(it -> modelMapper.map(it, OrderItemDTO.class))
+                    .collect(Collectors.toList());
+
+            dto.setOrderItems(itemDTOs);
+
+            if (o.getAddress() != null) dto.setAddressId(o.getAddress().getAddressId());
+
+            dtos.add(dto);
+        }
+
+        return dtos;
+    }
+
+    private OrderDTO buildOrderDTO(Order order, List<OrderItem> orderItems) {
+        OrderDTO dto = modelMapper.map(order, OrderDTO.class);
+
+        List<OrderItemDTO> items = (orderItems == null ? List.of() : orderItems)
+                .stream()
+                .map(it -> modelMapper.map(it, OrderItemDTO.class))
+                .collect(Collectors.toList());
+
+        dto.setOrderItems(items);
+
+        if (order.getAddress() != null) dto.setAddressId(order.getAddress().getAddressId());
+
+        return dto;
     }
 }

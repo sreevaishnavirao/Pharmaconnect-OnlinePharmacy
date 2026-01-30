@@ -14,10 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class AnalyticsController {
-
     @Autowired
     private AnalyticsService analyticsService;
-
     @GetMapping("/admin/app/analytics")
     public ResponseEntity<AnalyticsResponse> getAnalytics() {
         AnalyticsResponse response = analyticsService.getAnalyticsData();

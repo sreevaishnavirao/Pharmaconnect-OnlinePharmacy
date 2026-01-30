@@ -15,11 +15,8 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
-
     @Autowired
     private AuthUtil authUtil;
-
-    // ✅ USER places order
     @PostMapping("/order/users/payments/{paymentMethod}")
     public ResponseEntity<OrderDTO> orderProducts(
             @PathVariable String paymentMethod,
@@ -36,7 +33,6 @@ public class OrderController {
                 orderRequestDTO.getPgStatus(),
                 orderRequestDTO.getPgResponseMessage()
         );
-
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
 }

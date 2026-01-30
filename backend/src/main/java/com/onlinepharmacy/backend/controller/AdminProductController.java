@@ -25,7 +25,6 @@ public class AdminProductController {
     private final CategoryRepository categoryRepository;
     private final ProductService productService;
     private final StockNotificationService stockNotificationService;
-
     public AdminProductController(ProductRepository productRepository,
                                   CategoryRepository categoryRepository,
                                   ProductService productService,
@@ -35,7 +34,6 @@ public class AdminProductController {
         this.productService = productService;
         this.stockNotificationService = stockNotificationService;
     }
-
     private AdminProductResponse toResponse(Product p) {
         return new AdminProductResponse(
                 p.getProductId(),
@@ -50,7 +48,6 @@ public class AdminProductController {
                 p.getCategory() != null ? p.getCategory().getCategoryName() : null
         );
     }
-
     @GetMapping
     public ResponseEntity<List<AdminProductResponse>> getAll(@RequestParam(required = false) Long categoryId) {
         List<Product> products = (categoryId == null)
@@ -59,7 +56,6 @@ public class AdminProductController {
 
         return ResponseEntity.ok(products.stream().map(this::toResponse).toList());
     }
-
     @PostMapping
     public ResponseEntity<AdminProductResponse> create(@Valid @RequestBody ProductRequest req) {
         Category category = categoryRepository.findById(req.getCategoryId())
@@ -71,7 +67,6 @@ public class AdminProductController {
         p.setDescription(req.getDescription());
         p.setQuantity(req.getQuantity());
         p.setPrice(req.getPrice());
-
         double discount = (req.getDiscount() != null) ? req.getDiscount() : 0.0;
         p.setDiscount(discount);
 
@@ -95,7 +90,6 @@ public class AdminProductController {
 
         Category category = categoryRepository.findById(req.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found: " + req.getCategoryId()));
-
         existing.setProductName(req.getProductName());
         existing.setDescription(req.getDescription());
         existing.setQuantity(req.getQuantity());
@@ -104,7 +98,6 @@ public class AdminProductController {
         if (req.getImage() != null && !req.getImage().isBlank()) {
             existing.setImage(req.getImage());
         }
-
         double discount = (req.getDiscount() != null) ? req.getDiscount() : 0.0;
         existing.setDiscount(discount);
 
@@ -117,12 +110,11 @@ public class AdminProductController {
 
         Product saved = productRepository.save(existing);
 
-        // ✅ send back-in-stock emails if needed
+
         stockNotificationService.onProductQuantityChanged(saved, oldQty);
 
         return ResponseEntity.ok(toResponse(saved));
     }
-
     @PutMapping("/{id}/image")
     public ResponseEntity<AdminProductResponse> uploadProductImage(
             @PathVariable Long id,
@@ -136,7 +128,6 @@ public class AdminProductController {
 
         return ResponseEntity.ok(toResponse(updated));
     }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         Product existing = productRepository.findById(id)

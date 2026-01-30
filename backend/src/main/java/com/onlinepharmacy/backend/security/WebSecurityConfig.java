@@ -19,7 +19,6 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,21 +33,16 @@ public class WebSecurityConfig {
 
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
-
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
-
     @Autowired
     private JwtUtils jwtUtils;
 
-    // ✅ IMPORTANT: your AuthTokenFilter needs (JwtUtils, UserDetailsServiceImpl)
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter();
     }
 
-
-    // ✅ IMPORTANT: your DaoAuthenticationProvider needs UserDetailsService in constructor
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
@@ -56,7 +50,6 @@ public class WebSecurityConfig {
         return authProvider;
     }
 
-    // ✅ Compatible AuthenticationManager creation (no AuthenticationConfiguration)
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder authBuilder =
@@ -76,36 +69,17 @@ public class WebSecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
-                // ✅ DO NOT create another corsConfigurationSource bean here
-                // Uses your existing com.onlinepharmacy.backend.config.CorsConfig
                 .cors(cors -> {})
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
-                        // ✅ Allow preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // ✅ Public
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/images/**").permitAll()
-
-                        // ✅ Swagger / docs
-                        .requestMatchers("/v3/api-docs/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/swagger-ui.html").permitAll()
-
-                        // ✅ H2 console if used
-                        .requestMatchers("/h2-console/**").permitAll()
-
-                        // ✅ Role based
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/seller/**").hasAnyRole("ADMIN", "SELLER")
-
                         .requestMatchers(HttpMethod.POST, "/api/public/products/*/notify").permitAll()
-
-
                         .anyRequest().authenticated()
                 );
 
@@ -116,49 +90,36 @@ public class WebSecurityConfig {
 
         return http.build();
     }
-
     @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web -> web.ignoring().requestMatchers(
-                "/v2/api-docs",
-                "/configuration/ui",
-                "/swagger-resources/**",
-                "/configuration/security",
-                "/swagger-ui.html",
-                "/webjars/**"
-        ));
-    }
-
-    @Bean
-    public CommandLineRunner initData(RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public CommandLineRunner initData(RoleRepository roleRepository,
+                                      UserRepository userRepository,
+                                      PasswordEncoder passwordEncoder) {
         return args -> {
 
             Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
                     .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_USER)));
-
-            Role sellerRole = roleRepository.findByRoleName(AppRole.ROLE_SELLER)
-                    .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_SELLER)));
-
             Role adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
                     .orElseGet(() -> roleRepository.save(new Role(AppRole.ROLE_ADMIN)));
 
             Set<Role> userRoles = Set.of(userRole);
-            Set<Role> sellerRoles = Set.of(sellerRole);
-            Set<Role> adminRoles = Set.of(userRole, sellerRole, adminRole);
+            Set<Role> adminRoles = Set.of(userRole, adminRole);
 
             if (!userRepository.existsByUserName("user1")) {
-                userRepository.save(new User("user1", "user1@example.com", passwordEncoder.encode("password1")));
-            }
-            if (!userRepository.existsByUserName("seller1")) {
-                userRepository.save(new User("seller1", "seller1@example.com", passwordEncoder.encode("password2")));
+                userRepository.save(new User("user1", "user1@example.com",
+                        passwordEncoder.encode("password1")));
             }
             if (!userRepository.existsByUserName("admin")) {
-                userRepository.save(new User("admin", "admin@example.com", passwordEncoder.encode("adminPass")));
+                userRepository.save(new User("admin", "admin@example.com",
+                        passwordEncoder.encode("adminPass")));
             }
-
-            userRepository.findByUserName("user1").ifPresent(u -> { u.setRoles(userRoles); userRepository.save(u); });
-            userRepository.findByUserName("seller1").ifPresent(u -> { u.setRoles(sellerRoles); userRepository.save(u); });
-            userRepository.findByUserName("admin").ifPresent(u -> { u.setRoles(adminRoles); userRepository.save(u); });
+            userRepository.findByUserName("user1").ifPresent(u -> {
+                u.setRoles(userRoles);
+                userRepository.save(u);
+            });
+            userRepository.findByUserName("admin").ifPresent(u -> {
+                u.setRoles(adminRoles);
+                userRepository.save(u);
+            });
         };
     }
 }

@@ -16,7 +16,6 @@ public class AdminProductResponse {
     private double price;
     private double discount;
     private double specialPrice;
-
     private Long categoryId;
     private String categoryName;
 }

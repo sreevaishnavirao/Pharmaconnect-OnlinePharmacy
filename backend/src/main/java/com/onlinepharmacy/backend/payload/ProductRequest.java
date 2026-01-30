@@ -6,24 +6,17 @@ import lombok.Data;
 
 @Data
 public class ProductRequest {
-
     @NotBlank
     private String productName;
-
     private String image;
-
     @NotBlank
     private String description;
-
     @NotNull
     private Integer quantity;
-
     @NotNull
     private Double price;
-
-    private Double discount;      // optional
-    private Double specialPrice;  // optional
-
+    private Double discount;
+    private Double specialPrice;
     @NotNull
     private Long categoryId;
 }

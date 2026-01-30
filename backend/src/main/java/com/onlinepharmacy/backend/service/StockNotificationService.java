@@ -21,7 +21,7 @@ public class StockNotificationService {
 
     @Transactional
     public void subscribe(Long productId, String email) {
-        // If already exists, just set notified=false again so user can re-subscribe
+
         StockSubscription sub = subscriptionRepo.findByProductIdAndEmail(productId, email)
                 .orElseGet(StockSubscription::new);
 
@@ -35,19 +35,18 @@ public class StockNotificationService {
     @Transactional
     public void onProductQuantityChanged(Product savedProduct, int oldQty) {
         int newQty = savedProduct.getQuantity() == null ? 0 : savedProduct.getQuantity();
-
         if (oldQty <= 0 && newQty > 0) {
-            List<StockSubscription> subs = subscriptionRepo.findByProductIdAndNotifiedFalse(savedProduct.getProductId());
-            if (subs.isEmpty()) return;
+            List<StockSubscription> subs =
+                    subscriptionRepo.findByProductIdAndNotifiedFalse(savedProduct.getProductId());
+
+            if (subs == null || subs.isEmpty()) return;
 
             String subject = "Back in stock: " + savedProduct.getProductName();
             String body =
-                    "Good news!\n\n" +
-                            savedProduct.getProductName() + " is back in stock.\n" +
-                            "Available quantity: " + newQty + "\n\n" +
-                            "Open the app to order now.";
+                    "Good news!\n\n" + savedProduct.getProductName() + " is back in stock.\n" + "Available quantity is: " + newQty + "\n\n" + "Open the app to order now.";
 
             for (StockSubscription s : subs) {
+
                 emailService.send(s.getEmail(), subject, body);
                 s.setNotified(true);
             }

@@ -1,25 +1,18 @@
 package com.onlinepharmacy.backend.controller;
 
-import com.onlinepharmacy.backend.model.Order;
+import com.onlinepharmacy.backend.payload.AdminOrderDetailsResponse;
 import com.onlinepharmacy.backend.payload.AdminOrderPageResponse;
-import com.onlinepharmacy.backend.payload.AdminOrderResponse;
-import com.onlinepharmacy.backend.repositories.OrderRepository;
-import org.springframework.data.domain.*;
+import com.onlinepharmacy.backend.service.AdminOrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/orders")
 public class AdminOrderController {
-
-    private final OrderRepository orderRepository;
-
-    public AdminOrderController(OrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
+    private final AdminOrderService adminOrderService;
+    public AdminOrderController(AdminOrderService adminOrderService) {
+        this.adminOrderService = adminOrderService;
     }
-
     @GetMapping
     public ResponseEntity<AdminOrderPageResponse> getAllOrders(
             @RequestParam(defaultValue = "0") Integer pageNumber,
@@ -27,33 +20,12 @@ public class AdminOrderController {
             @RequestParam(defaultValue = "orderId") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder
     ) {
-
-        Sort sort = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, sort);
-        Page<Order> page = orderRepository.findAll(pageable);
-
-        List<AdminOrderResponse> content = page.getContent().stream()
-                .map(o -> new AdminOrderResponse(
-                        o.getOrderId(),
-                        o.getEmail(),
-                        o.getOrderDate() != null ? o.getOrderDate().toString() : null,
-                        o.getOrderStatus(),
-                        o.getTotalAmount()
-                ))
-                .toList();
-
-        AdminOrderPageResponse resp = new AdminOrderPageResponse();
-        resp.setContent(content);
-        resp.setPageNumber(page.getNumber());
-        resp.setPageSize(page.getSize());
-        resp.setTotalElements(page.getTotalElements());
-        resp.setTotalPages(page.getTotalPages());
-        resp.setLastPage(page.isLast());
-
-        return ResponseEntity.ok(resp);
+        return ResponseEntity.ok(
+                adminOrderService.getAllOrders(pageNumber, pageSize, sortBy, sortOrder)
+        );
+    }
+    @GetMapping("/{orderId}")
+    public ResponseEntity<AdminOrderDetailsResponse> getOrderDetails(@PathVariable Long orderId) {
+        return ResponseEntity.ok(adminOrderService.getOrderDetails(orderId));
     }
 }
-

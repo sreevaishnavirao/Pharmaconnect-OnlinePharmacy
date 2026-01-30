@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -37,13 +38,15 @@ public class LowStockAlertJob {
 
     @Scheduled(fixedDelayString = "${app.stock.job-interval-ms:300000}")
     public void run() {
-        if (adminEmails == null || adminEmails.trim().isEmpty()) return;
+        List<String> recipients = parseRecipients(adminEmails);
+        if (recipients.isEmpty()) return;
 
         List<Product> low = productRepo.findByQuantityLessThanEqual(threshold);
         if (low.isEmpty()) return;
 
         for (Product p : low) {
-            Integer qty = p.getQuantity() == null ? 0 : p.getQuantity();
+            Integer qty = (p.getQuantity() == null) ? 0 : p.getQuantity();
+
             StockAlertLog log = logRepo.findByProductId(p.getProductId()).orElse(null);
 
             boolean shouldSend = (log == null)
@@ -61,10 +64,8 @@ public class LowStockAlertJob {
                             "Threshold: " + threshold + "\n\n" +
                             "Please restock soon.";
 
-            for (String email : adminEmails.split(",")) {
-                String to = email.trim();
-                if (!to.isEmpty()) emailService.send(to, subject, body);
-            }
+
+            emailService.sendEmail(recipients, subject, body);
 
             if (log == null) log = new StockAlertLog();
             log.setProductId(p.getProductId());
@@ -72,5 +73,13 @@ public class LowStockAlertJob {
             log.setLastQuantity(qty);
             logRepo.save(log);
         }
+    }
+    private List<String> parseRecipients(String csv) {
+        if (csv == null || csv.trim().isEmpty()) return List.of();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
     }
 }

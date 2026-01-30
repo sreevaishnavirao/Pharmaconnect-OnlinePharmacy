@@ -11,23 +11,17 @@ import java.nio.file.Paths;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
-
     @Value("${backend.image:images/}")
     private String imageDir;
-
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Serve uploaded images from the filesystem directory configured by backend.image
-        // Example: backend.image=images/  =>  GET /images/<file>  ->  ./images/<file>
         Path dir = Paths.get(imageDir).toAbsolutePath().normalize();
         String location = "file:" + dir.toString() + "/";
         registry.addResourceHandler("/images/**")
                 .addResourceLocations(location);
     }
-
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // Allow the Vite dev server to call the backend with cookies.
         registry.addMapping("/api/**")
                 .allowedOrigins(
                         "http://localhost:5173",
