@@ -1,0 +1,12 @@
+
+
+export const FETCH_PRODUCTS = "FETCH_PRODUCTS";
+export const FETCH_CATEGORIES = "FETCH_CATEGORIES";
+
+export const PRODUCTS_LOADING = "PRODUCTS_LOADING";
+export const PRODUCTS_ERROR = "PRODUCTS_ERROR";
+
+
+export const CART_LOADING = "CART_LOADING";
+export const CART_SUCCESS = "CART_SUCCESS";
+export const CART_ERROR = "CART_ERROR";
