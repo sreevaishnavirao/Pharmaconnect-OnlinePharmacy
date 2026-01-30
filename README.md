@@ -1,7 +1,7 @@
-# Integrated Online Pharmacy (React + Spring Boot)
+# PharmaConnect
 
-This bundle contains:
-- `frontend/` – React (Vite) client
+This contains:
+- `frontend/` – React  client
 - `backend/` – Spring Boot + PostgreSQL API
 
 ## Run backend
@@ -17,13 +17,3 @@ This bundle contains:
 3. `npm run dev`
 4. Frontend runs at `http://localhost:5173`
 
-## Notes on integration changes
-- Frontend now calls the backend endpoints under `/api/...` and uses cookies (`credentials: include`).
-- Cart now supports:
-  - local cart for anonymous users
-  - automatic sync to backend cart after login
-- Checkout places an order via `POST /api/order/users/payments/{paymentMethod}`.
-- Backend now includes:
-  - CORS settings for the Vite dev server
-  - filesystem image serving at `/images/**` mapped to the `backend.image` folder (default `images/`)
-  - JWT secret handling fixed (treats the secret as a raw string, not Base64)
